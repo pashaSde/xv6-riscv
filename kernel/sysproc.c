@@ -89,3 +89,11 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_sysinfo(void)      // info syscall definition
+{
+  int param;
+  argint(0, &param);
+  return get_sysinfo(param);
+}

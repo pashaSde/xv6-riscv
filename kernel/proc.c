@@ -681,3 +681,18 @@ procdump(void)
     printf("\n");
   }
 }
+
+// info: printing info based on param
+int get_sysinfo(int param) {
+  int sysinfo = 0;
+  if (param == 0) {
+    sysinfo = 1000;   	// ToDo: Correct this
+  } else if (param == 1) {
+    sysinfo = 2000;		// ToDo: Correct this
+  } else if (param == 2) {
+    sysinfo = 3000;		// ToDo: Correct this
+  } else {
+    sysinfo = -1;
+  }
+  return sysinfo;
+}
