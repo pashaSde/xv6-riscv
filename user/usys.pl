@@ -38,3 +38,4 @@ entry("sleep");
 entry("uptime");
 # info syscall for user
 entry("sysinfo");
+entry("procinfo");

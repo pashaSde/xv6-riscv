@@ -696,3 +696,25 @@ int get_sysinfo(int param) {
   }
   return sysinfo;
 }
+
+// procinfo: printing process info
+int get_procinfo(uint64 addr) {
+  struct pinfo param;
+
+  // Copy the struct from user space to kernel space
+  if (copyin(myproc()->pagetable, (char *)&param, addr, sizeof(param)) < 0)
+    return -1;
+
+  // Use the struct data (e.g., print or process it)
+  printf("field1: %d, field2: %d, field3: %d\n", param.ppid, param.syscall_count, param.page_usage);
+  param.ppid = 1000; // Example modification
+  param.syscall_count = 2000; // Example modification
+  param.page_usage = 3000; // Example modification
+  printf("Post modify in kernel: field1: %d, field2: %d, field3: %d\n", param.ppid, param.syscall_count, param.page_usage);
+
+  // Write the modified struct back to user space
+  if (copyout(myproc()->pagetable, addr, (char *)&param, sizeof(param)) < 0)
+    return -1;
+
+  return 0;
+}

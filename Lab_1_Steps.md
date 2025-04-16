@@ -9,3 +9,8 @@
 7. user/user.h
 8. user/test_file.c
 9. Makefile
+
+Question 2:
+
+1. Define the struct in kernel/types.h
+2. 

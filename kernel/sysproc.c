@@ -97,3 +97,15 @@ sys_sysinfo(void)      // info syscall definition
   argint(0, &param);
   return get_sysinfo(param);
 }
+
+uint64
+sys_procinfo(void)     // procinfo syscall definition
+{
+  uint64 addr;
+
+  // Get the pointer to the struct from the system call argument
+  argaddr(0, &addr);
+
+  // Call the get_procinfo function
+  return get_procinfo(addr);
+}
