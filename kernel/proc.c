@@ -20,6 +20,16 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
+// Declare struct run and kmem
+struct run {
+  struct run *next;
+};
+
+extern struct {
+  struct spinlock lock;
+  struct run *freelist;
+} kmem;
+
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
 // memory model when using p->parent.
@@ -145,7 +155,7 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
+  p->syscall_count = 0;   // Initialize syscall count to 0 for new process
   return p;
 }
 
@@ -686,11 +696,22 @@ procdump(void)
 int get_sysinfo(int param) {
   int sysinfo = 0;
   if (param == 0) {
-    sysinfo = 1000;   	// ToDo: Correct this
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++) {
+    	if (p->state != UNUSED) {
+          sysinfo++;
+        }
+    }
   } else if (param == 1) {
-    sysinfo = 2000;		// ToDo: Correct this
+	extern int syscall_count; // Declare the global syscall_count
+    sysinfo = syscall_count;
   } else if (param == 2) {
-    sysinfo = 3000;		// ToDo: Correct this
+    struct run *r;
+  	acquire(&kmem.lock); // Acquire the lock to safely access the freelist
+  	for (r = kmem.freelist; r != 0; r = r->next) {
+    	sysinfo++;
+  	}
+  	release(&kmem.lock); // Release the lock after accessing the freelist
   } else {
     sysinfo = -1;
   }
@@ -706,11 +727,12 @@ int get_procinfo(uint64 addr) {
     return -1;
 
   // Use the struct data (e.g., print or process it)
-  printf("field1: %d, field2: %d, field3: %d\n", param.ppid, param.syscall_count, param.page_usage);
-  param.ppid = 1000; // Example modification
-  param.syscall_count = 2000; // Example modification
-  param.page_usage = 3000; // Example modification
-  printf("Post modify in kernel: field1: %d, field2: %d, field3: %d\n", param.ppid, param.syscall_count, param.page_usage);
+
+  struct proc *p = myproc();
+
+  param.ppid = p->parent ? p->parent->pid : -1; // Get parent PID
+  param.syscall_count = p->syscall_count; // Get syscall count
+  param.page_usage = p->sz / PGSIZE; // Get page usage
 
   // Write the modified struct back to user space
   if (copyout(myproc()->pagetable, addr, (char *)&param, sizeof(param)) < 0)
