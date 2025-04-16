@@ -23,13 +23,5 @@ int main(int argc, char *argv[])
     } else {
         printf("procinfo failed\n");
     }
-//
-//    ret = procinfo(&void);
-//    if (ret == 0) {
-//        printf("[procinfo] ppid: %d, syscall_count: %d, page_usage: %d\n",
-//        pinfo.ppid + 2, pinfo.syscall_count + 2, pinfo.page_usage + 2);
-//    } else {
-//        printf("procinfo failed\n");
-//    }
 }
 
