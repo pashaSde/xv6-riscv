@@ -20,7 +20,7 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
-// Declare struct run and kmem
+// Declare struct run and kmem to get memory information
 struct run {
   struct run *next;
 };
@@ -704,7 +704,7 @@ int get_sysinfo(int param) {
     }
   } else if (param == 1) {
 	extern int syscall_count; // Declare the global syscall_count
-    sysinfo = syscall_count;
+    sysinfo = syscall_count - 1;	// Subtract 1 to exclude the current syscall
   } else if (param == 2) {
     struct run *r;
   	acquire(&kmem.lock); // Acquire the lock to safely access the freelist
@@ -726,9 +726,7 @@ int get_procinfo(uint64 addr) {
   if (copyin(myproc()->pagetable, (char *)&param, addr, sizeof(param)) < 0)
     return -1;
 
-  // Use the struct data (e.g., print or process it)
-
-  struct proc *p = myproc();
+  struct proc *p = myproc();		// Grab the current process
 
   param.ppid = p->parent ? p->parent->pid : -1; // Get parent PID
   param.syscall_count = p->syscall_count; // Get syscall count
