@@ -704,7 +704,7 @@ int get_sysinfo(int param) {
     }
   } else if (param == 1) {
 	extern int syscall_count; // Declare the global syscall_count
-    sysinfo = syscall_count - 1;	// Subtract 1 to exclude the current syscall
+    sysinfo = syscall_count;	// This count does not track the current call at this point. It is incremented later in syscall(). So no need to subtract 1.
   } else if (param == 2) {
     struct run *r;
   	acquire(&kmem.lock); // Acquire the lock to safely access the freelist
