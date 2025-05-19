@@ -125,6 +125,8 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  p->tickets = 0;   // default ticket value
+  p->ticks = 0;
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -460,6 +462,7 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        p->ticks++;
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -680,4 +683,17 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int sched_statistics(void)
+{
+  struct proc *p = myproc();
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED) {
+      printf("%d(%s): tickets: %d, ticks: %d\n", p->pid, p->name, p->tickets, p->ticks);
+    }
+    release(&p->lock);
+  }
+  return 0;
 }
