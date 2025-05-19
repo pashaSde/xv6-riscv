@@ -1,0 +1,19 @@
+Part 3 Commands:
+
+Run 5 times for stride/lottery - take avg => 2 plots. Each with 4 lines. Dashed => Expected. Colored => Actual.
+lab2 20 4 8 4 2 1
+lab2 40 4 8 4 2 1
+lab2 60 4 8 4 2 1
+lab2 80 4 8 4 2 1
+lab2 100 4 8 4 2 1
+
+Run 5 times for stride/lottery - take avg => 2 plots. Each with 4 lines. Dashed => Expected. Colored => Actual.
+lab2 20 4 1 1 1 1
+lab2 40 4 1 1 1 1
+lab2 60 4 1 1 1 1
+lab2 80 4 1 1 1 1
+lab2 100 4 1 1 1 1
+
+Lottery: make clean; make qemu LAB2=LOTTERY
+Stride: make clean; make qemu LAB2=STRIDE
+
