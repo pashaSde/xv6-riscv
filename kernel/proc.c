@@ -697,3 +697,15 @@ int sched_statistics(void)
   }
   return 0;
 }
+
+int sched_tickets(int tickets)
+{
+  struct proc *p = myproc();
+  if (tickets < 0 || tickets > 10000) {
+    return -1;
+  }
+  acquire(&p->lock);
+  p->tickets = tickets;
+  release(&p->lock);
+  return 0;
+}
