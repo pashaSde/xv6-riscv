@@ -106,4 +106,8 @@ struct proc {
   char name[16];               // Process name (debugging)
   int tickets;                 // Number of tickets for lottery/stride scheduler
   int ticks;                     // Number of ticks used by the process
+  int stride;
+  int pass;                 // pass value for stride scheduler. Starts at 0
 };
+
+#define STRIDE_K 10000

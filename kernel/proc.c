@@ -125,8 +125,11 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
-  p->tickets = 10000;   // default ticket value
+  p->tickets = STRIDE_K;   // default ticket value
   p->ticks = 0;
+  p->stride = STRIDE_K / p->tickets;
+  p->pass = p->stride;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -436,6 +439,15 @@ wait(uint64 addr)
   }
 }
 
+// pseudo random generator (https://stackoverflow.com/a/7603688)
+unsigned short lfsr = 0xACE1u;
+unsigned short bit;
+unsigned short rand()
+{
+bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
+return lfsr = (lfsr >> 1) | (bit << 15);
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -453,24 +465,81 @@ scheduler(void)
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
+    #if defined(LOTTERY)
+      int total_tickets = 0;
+      for(p = proc; p < &proc[NPROC]; p++) {
+        if(p->state == RUNNABLE) {
+          total_tickets += p->tickets;
+        }
+      }
+      if (total_tickets > 0) {
+        int random_ticket = rand() % total_tickets;
+        int current_ticket = 0;
+        for(p = proc; p < &proc[NPROC]; p++) {
+          acquire(&p->lock);
+          if(p->state == RUNNABLE) {
+            current_ticket += p->tickets;
+            if (current_ticket > random_ticket) {
+              // Switch to chosen process.  It is the process's job
+              // to release its lock and then reacquire it
+              // before jumping back to us.
+              p->state = RUNNING;
+              c->proc = p;
+              p->ticks++;
+              swtch(&c->context, &p->context);
 
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        p->ticks++;
-        swtch(&c->context, &p->context);
+              // Process is done running for now.
+              // It should have changed its p->state before coming back.
+              c->proc = 0;
+              release(&p->lock);
+              break;
+            }
+          }
+          release(&p->lock);
+        }
+      }
+    #elif defined(STRIDE)
+      // Iterate each runnable process. Choose the process with lowest pass value. And update pass += stride.
+      struct proc *chosen = 0;
+      for(p = proc; p < &proc[NPROC]; p++) {
+        if(p->state == RUNNABLE) {
+          if (chosen == 0 || p->pass < chosen->pass) {
+            chosen = p;
+          }
+        }
+      }
+      if (chosen != 0) {
+        acquire(&chosen->lock);
+        chosen->pass += chosen->stride;
+        chosen->state = RUNNING;
+        c->proc = chosen;
+        chosen->ticks++;
+        swtch(&c->context, &chosen->context);
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
+        release(&chosen->lock);
       }
-      release(&p->lock);
-    }
+    #else
+      for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        if(p->state == RUNNABLE) {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          p->ticks++;
+          swtch(&c->context, &p->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
+      }
+    #endif
   }
 }
 
@@ -706,6 +775,8 @@ int sched_tickets(int tickets)
   }
   acquire(&p->lock);
   p->tickets = tickets;
+  p->stride = STRIDE_K / p->tickets;
+  p->pass = p->stride;
   release(&p->lock);
   return 0;
 }
