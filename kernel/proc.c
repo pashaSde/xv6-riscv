@@ -125,7 +125,7 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
-  p->tickets = 0;   // default ticket value
+  p->tickets = 10000;   // default ticket value
   p->ticks = 0;
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
