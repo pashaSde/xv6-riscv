@@ -107,7 +107,7 @@ struct proc {
   int tickets;                 // Number of tickets for lottery/stride scheduler
   int ticks;                     // Number of ticks used by the process
   int stride;
-  int pass;                 // pass value for stride scheduler. Starts at 0
+  int pass;                 // pass value for stride scheduler. Default is STRIDE_K = 10000
 };
 
 #define STRIDE_K 10000

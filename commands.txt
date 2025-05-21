@@ -17,3 +17,8 @@ lab2 100 4 1 1 1 1
 Lottery: make clean; make qemu LAB2=LOTTERY
 Stride: make clean; make qemu LAB2=STRIDE
 
+Demo commands
+
+lab2 100 3 30 20 10
+lab2 100 2 19 1
+

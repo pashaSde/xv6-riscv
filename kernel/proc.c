@@ -775,6 +775,7 @@ int sched_tickets(int tickets)
   }
   acquire(&p->lock);
   p->tickets = tickets;
+  // Only needed for Stride scheduling
   p->stride = STRIDE_K / p->tickets;
   p->pass = p->stride;
   release(&p->lock);
