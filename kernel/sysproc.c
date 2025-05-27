@@ -89,3 +89,20 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_clone(void)
+{
+  uint64 stack;
+
+  // Get the pointer to the stack
+  argaddr(0, &stack);
+
+  if (stack == 0) {
+    return -1; // Invalid stack pointer
+  }
+
+  // Call the clone function
+  return clone(stack);
+}
+

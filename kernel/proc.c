@@ -681,3 +681,11 @@ procdump(void)
     printf("\n");
   }
 }
+
+int
+clone(uint64 stack)
+{
+	printf("clone not implemented\n");
+	printf("stack: %p\n", stack);
+	return -1;
+}
