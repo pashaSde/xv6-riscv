@@ -5,11 +5,20 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-int main(int argc, char *argv[])
-{
-    char stack[4096];
-    int res = clone(stack);
-    printf("clone returned %d\n", res);
-    printf("clone called with stack at %p\n", stack);
+void thread_func(void *arg) {
+    printf("hello from thread!\n");
+    exit(0); // only exit the thread!
+}
+
+int main() {
+    void *stack = malloc(4096);
+    int pid = clone(stack);
+    if (pid == 0) {
+        thread_func(0); // child runs function
+    } else {
+        // parent waits for thread to finish
+        wait(0);
+        printf("thread exited\n");
+    }
     exit(0);
 }

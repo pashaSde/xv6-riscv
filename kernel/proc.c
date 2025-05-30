@@ -107,7 +107,7 @@ allocpid()
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
 static struct proc*
-allocproc(void)
+allocproc(pagetable_t pagetable, int thread_id, void *stack)
 {
   struct proc *p;
 
@@ -132,12 +132,41 @@ found:
     return 0;
   }
 
-  // An empty user page table.
-  p->pagetable = proc_pagetable(p);
-  if(p->pagetable == 0){
-    freeproc(p);
-    release(&p->lock);
-    return 0;
+  // Allocate a user page table.
+  if (pagetable) {
+    // If pagetable is provided, use it.
+    p->pagetable = pagetable;
+  } else {
+    // Otherwise, allocate a new pagetable.
+    // An empty user page table.
+    p->pagetable = proc_pagetable(p);
+    if(p->pagetable == 0){
+      freeproc(p);
+      release(&p->lock);
+      return 0;
+    }
+  }
+
+  if (thread_id > 0) {
+      // it's a thread
+      p->thread_id = thread_id;
+      p->trapframe->sp = (uint64)stack + PGSIZE; // new user stack for the thread
+      // Map trapframe at TRAPFRAME - PGSIZE * thread_id in shared pagetable
+      if(mappages(p->pagetable,
+               TRAPFRAME - PGSIZE * thread_id,
+               PGSIZE,
+               (uint64)p->trapframe,
+               PTE_R | PTE_W) < 0) {
+			uvmunmap(p->pagetable, TRAMPOLINE, 1, 0);
+    		uvmfree(p->pagetable, 0);
+			freeproc(p);
+      		release(&p->lock);
+    		return 0;
+		}
+  } else {
+      // main process
+      p->thread_id = 0;
+	  p->next_thread_id = 1;
   }
 
   // Set up new context to start executing at forkret,
@@ -158,7 +187,7 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
-  if(p->pagetable)
+  if(p->pagetable && p->thread_id == 0)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
   p->sz = 0;
@@ -234,7 +263,7 @@ userinit(void)
 {
   struct proc *p;
 
-  p = allocproc();
+  p = allocproc(0, 0, 0);
   initproc = p;
   
   // allocate one user page and copy initcode's instructions
@@ -284,7 +313,7 @@ fork(void)
   struct proc *p = myproc();
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((np = allocproc(0, 0, 0)) == 0){
     return -1;
   }
 
@@ -685,7 +714,58 @@ procdump(void)
 int
 clone(uint64 stack)
 {
-	printf("clone not implemented\n");
-	printf("stack: %p\n", stack);
-	return -1;
+	// printf("clone not implemented\n");
+	// printf("stack: %p\n", stack);
+	// return -1;
+
+  int i, pid;
+  struct proc *np;
+  struct proc *p = myproc();
+
+  int thread_id = p->next_thread_id++;
+
+  if (thread_id <= 0 || thread_id >= NTHREADS) {
+    // If thread_id is not positive, we cannot create a new thread.
+    return -1;
+  }
+  // Allocate process.
+  if((np = allocproc(p->pagetable, thread_id, (void*) stack)) == 0){
+    return -1;
+  }
+
+  // Copy user memory from parent to child.
+  // if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
+  //  freeproc(np);
+  //  release(&np->lock);
+  //  return -1;
+  // }
+  np->sz = p->sz;
+
+  // copy saved user registers.
+  *(np->trapframe) = *(p->trapframe);
+
+  // Cause fork to return 0 in the child.
+  np->trapframe->a0 = 0;
+
+  // increment reference counts on open file descriptors.
+  for(i = 0; i < NOFILE; i++)
+    if(p->ofile[i])
+      np->ofile[i] = filedup(p->ofile[i]);
+  np->cwd = idup(p->cwd);
+
+  safestrcpy(np->name, p->name, sizeof(p->name));
+
+  pid = np->pid;
+
+  release(&np->lock);
+
+  acquire(&wait_lock);
+  np->parent = p;
+  release(&wait_lock);
+
+  acquire(&np->lock);
+  np->state = RUNNABLE;
+  release(&np->lock);
+
+  return pid;
 }

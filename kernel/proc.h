@@ -105,4 +105,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int thread_id;               // Thread ID for this process
+  int next_thread_id; 		   // Only used by parent
 };
+
+#define NTHREADS 21 // Maximum number of threads per process
