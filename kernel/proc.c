@@ -102,12 +102,56 @@ allocpid()
   return pid;
 }
 
+static struct proc*
+allocproc(void)
+{
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == UNUSED) {
+      goto found;
+    } else {
+      release(&p->lock);
+    }
+  }
+  return 0;
+
+found:
+  p->pid = allocpid();
+  p->state = USED;
+  p->thread_id = 0;
+  // Allocate a trapframe page.
+  if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
+  // An empty user page table.
+  p->pagetable = proc_pagetable(p);
+  if(p->pagetable == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
+  // Set up new context to start executing at forkret,
+  // which returns to user space.
+  memset(&p->context, 0, sizeof(p->context));
+  p->context.ra = (uint64)forkret;
+  p->context.sp = p->kstack + PGSIZE;
+
+  return p;
+}
+
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
+
 static struct proc*
-allocproc(pagetable_t pagetable, int thread_id, void *stack)
+allocproc_thread(pagetable_t pagetable, int thread_id, void *stack)
 {
   struct proc *p;
 
@@ -263,7 +307,7 @@ userinit(void)
 {
   struct proc *p;
 
-  p = allocproc(0, 0, 0);
+  p = allocproc();
   initproc = p;
   
   // allocate one user page and copy initcode's instructions
@@ -313,7 +357,7 @@ fork(void)
   struct proc *p = myproc();
 
   // Allocate process.
-  if((np = allocproc(0, 0, 0)) == 0){
+  if((np = allocproc()) == 0){
     return -1;
   }
 
@@ -729,7 +773,7 @@ clone(uint64 stack)
     return -1;
   }
   // Allocate process.
-  if((np = allocproc(p->pagetable, thread_id, (void*) stack)) == 0){
+  if((np = allocproc_thread(p->pagetable, thread_id, (void*) stack)) == 0){
     return -1;
   }
 
@@ -747,6 +791,8 @@ clone(uint64 stack)
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
+  np->trapframe->sp = stack + PGSIZE;
+
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
@@ -755,17 +801,17 @@ clone(uint64 stack)
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
-  pid = np->pid;
-
-  release(&np->lock);
+  // release(&np->lock);
 
   acquire(&wait_lock);
   np->parent = p;
   release(&wait_lock);
 
+  printf("np = %p, &np->lock = %p, np->pid = %d\n", np, &np->lock, np->pid);
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
 
+  // pid = np->pid;
   return pid;
 }

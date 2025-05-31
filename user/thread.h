@@ -1,8 +1,14 @@
-//
-// Created by Pankaj Sharma on 29/05/25.
-//
 
 #ifndef THREAD_H
 #define THREAD_H
 
-#endif //THREAD_H
+struct lock_t {
+    uint locked;
+};
+
+int thread_create(void *(*start_routine)(void *), void *arg);
+void lock_init(struct lock_t *lock);
+void lock_acquire(struct lock_t *lock);
+void lock_release(struct lock_t *lock);
+
+#endif

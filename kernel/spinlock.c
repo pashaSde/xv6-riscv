@@ -21,6 +21,17 @@ initlock(struct spinlock *lk, char *name)
 void
 acquire(struct spinlock *lk)
 {
+
+  if ((uint64)lk == 0) {
+    printf("acquire: null lock pointer\n");
+    panic("acquire");
+  }
+
+  if ((uint64)lk < 0x80000000 || (uint64)lk > 0xFFFFFFFFFFFFF000) {
+    printf("acquire: invalid lock pointer %p\n", lk);
+    panic("acquire");
+  }
+  
   push_off(); // disable interrupts to avoid deadlock.
   if(holding(lk))
     panic("acquire");
