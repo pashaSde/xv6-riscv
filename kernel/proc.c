@@ -228,10 +228,6 @@ found:
 static void
 freeproc(struct proc *p)
 {
-  if(p->trapframe)
-    kfree((void*)p->trapframe);
-  p->trapframe = 0;
-  
   // Unmap thread's trapframe from shared pagetable
   if (p->pagetable && p->thread_id > 0) {
       uvmunmap(p->pagetable, TRAPFRAME - PGSIZE * p->thread_id, 1, 1); 
@@ -240,6 +236,10 @@ freeproc(struct proc *p)
 
   // Only main thread frees the shared pagetable
   if(p->thread_id == 0 && p->pagetable) {
+    // Free trapframe page if it exists
+	if(p->trapframe)
+    	kfree((void*)p->trapframe);
+  	  p->trapframe = 0;
       proc_freepagetable(p->pagetable, p->sz);
       p->pagetable = 0;
   }

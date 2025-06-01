@@ -20,15 +20,13 @@ void lock_release(struct lock_t *lock) {
 }
 
 int thread_create(void (*start_routine)(void *), void *arg) {
-    
     void *stack = sbrk(PGSIZE);
-    if (stack == 0 ) return -1;
+    if (stack == (void *)-1 || stack == 0) return -1;
     int tid = clone(stack);
     if (tid < 0) return -1;
     if (tid == 0) {
         start_routine(arg);
         exit(0);
     }
-
     return 0;
 }
