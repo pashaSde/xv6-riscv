@@ -121,7 +121,7 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->thread_id = 0;
-  p->next_thread_id=1;
+  p->next_thread_id = 1;
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -778,7 +778,6 @@ clone(uint64 stack)
 
   int thread_id = p->next_thread_id++;
 
-  // printf("THREAD ID: %d\n", thread_id);
   if (thread_id <= 0 || thread_id >= NTHREADS) {
     // If thread_id is not positive, we cannot create a new thread.
     return -1;
@@ -790,12 +789,6 @@ clone(uint64 stack)
     return -1;
   }
 
-  // Copy user memory from parent to child.
-  // if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
-  //  freeproc(np);
-  //  release(&np->lock);
-  //  return -1;
-  // }
   np->sz = p->sz;
 
   // copy saved user registers.
@@ -813,7 +806,6 @@ clone(uint64 stack)
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
-
 
   acquire(&wait_lock);
   np->parent = p;
