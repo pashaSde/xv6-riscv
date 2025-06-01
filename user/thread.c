@@ -21,12 +21,10 @@ void lock_release(struct lock_t *lock) {
 
 int thread_create(void (*start_routine)(void *), void *arg) {
     
-    void *stack = (void*)malloc(PGSIZE * sizeof(void));
+    void *stack = sbrk(PGSIZE);
     if (stack == 0 ) return -1;
-    printf("I was here in Thread Create stack return!\n");
     int tid = clone(stack);
     if (tid < 0) return -1;
-    printf("I was here in Thread Create tid return!\n");
     if (tid == 0) {
         start_routine(arg);
         exit(0);
@@ -34,15 +32,3 @@ int thread_create(void (*start_routine)(void *), void *arg) {
 
     return 0;
 }
-// int thread_create(void *(*thread_fn)(void*), void *arg) {
-// 	int threadid;
-// 	void* stack = (void*)malloc(4096 * sizeof(void));
-// 	threadid  = clone(stack);
-// 	if(threadid != 0) {
-// 	}
-//     else{
-//     (*thread_fn) (arg);
-// 	exit(0);
-//     }
-// 	return 0;
-// }

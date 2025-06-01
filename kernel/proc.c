@@ -121,6 +121,7 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->thread_id = 0;
+  p->next_thread_id=1;
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -210,7 +211,6 @@ found:
   } else {
       // main process
       p->thread_id = 0;
-	  p->next_thread_id = 1;
   }
 
   // Set up new context to start executing at forkret,
@@ -218,7 +218,7 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
+  release(&p->lock); 
   return p;
 }
 
@@ -231,8 +231,18 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
-  if(p->pagetable && p->thread_id == 0)
-    proc_freepagetable(p->pagetable, p->sz);
+  
+  // Unmap thread's trapframe from shared pagetable
+  if (p->pagetable && p->thread_id > 0) {
+      uvmunmap(p->pagetable, TRAPFRAME - PGSIZE * p->thread_id, 1, 1); 
+      p->trapframe = 0;
+  }
+
+  // Only main thread frees the shared pagetable
+  if(p->thread_id == 0 && p->pagetable) {
+      proc_freepagetable(p->pagetable, p->sz);
+      p->pagetable = 0;
+  }
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -758,22 +768,25 @@ procdump(void)
 int
 clone(uint64 stack)
 {
-	// printf("clone not implemented\n");
-	// printf("stack: %p\n", stack);
-	// return -1;
 
   int i, pid;
   struct proc *np;
   struct proc *p = myproc();
 
+  if (stack == 0 || (stack % PGSIZE) != 0)
+    return -1;
+
   int thread_id = p->next_thread_id++;
 
+  // printf("THREAD ID: %d\n", thread_id);
   if (thread_id <= 0 || thread_id >= NTHREADS) {
     // If thread_id is not positive, we cannot create a new thread.
     return -1;
   }
   // Allocate process.
-  if((np = allocproc_thread(p->pagetable, thread_id, (void*) stack)) == 0){
+  np = allocproc_thread(p->pagetable, thread_id, (void*) stack);
+  
+  if(np == 0){
     return -1;
   }
 
@@ -801,17 +814,15 @@ clone(uint64 stack)
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
-  // release(&np->lock);
 
   acquire(&wait_lock);
   np->parent = p;
   release(&wait_lock);
 
-  printf("np = %p, &np->lock = %p, np->pid = %d\n", np, &np->lock, np->pid);
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
 
-  // pid = np->pid;
+  pid = np->pid;
   return pid;
 }

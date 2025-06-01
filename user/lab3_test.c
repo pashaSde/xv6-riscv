@@ -7,7 +7,6 @@ struct lock_t lock;
 int n_threads, n_passes, cur_turn, cur_pass;
 void* thread_fn(void *arg)
 {
-    printf("I was here!\n");
     int thread_id = (uint64)arg;
     int done = 0;
     while (!done) {
